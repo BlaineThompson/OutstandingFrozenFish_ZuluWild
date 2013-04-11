@@ -1,0 +1,156 @@
+doctype 5
+html
+  head
+    link(rel='stylesheet', href='/css/JQueryUI/css/trontastic/jquery-ui-1.10.1.custom.css')
+    link(rel='stylesheet', href='/css/style.css')
+    script(src='//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js')
+    script(src='/jquery-cookie-master/jquery.cookie.js')
+    script(src='http://code.jquery.com/ui/1.10.1/jquery-ui.js')
+    script
+      var files = new Array();
+ 
+      var fileList = "";
+ 
+      $(document).ready(function(){
+        $("#_noFile").dialog({modal:true, autoOpen: false});
+        $("#_noUploadFile").dialog({modal:true, autoOpen: false});
+      });
+
+      $(document).ready(function(){
+       $("#_msgSubmitButton").click(function(){
+         $.ajax({
+            type:'POST',
+            data:prepMessage($("#_msgSubmit").val()),
+            url:'/updateMsg',
+            dataType:'json',
+            complete: function(chatSession){
+              var session = chatSession.responseText;
+              $("#_msgAreaText").val(session);
+              $("#_msgAreaText").scrollTop( $("#_msgAreaText")[0].scrollHeight - $("#_msgAreaText").height() );
+            }
+          });
+         $("#_msgSubmit").val("");
+       });
+      });
+
+      function prepMessage( textValue ){
+        var sendMsg = {};
+        sendMsg.text = textValue;
+        var name = "";
+        if( $.cookie('screenName') !== null || $.cookie('screenName') !== "" )
+            name = $.cookie('screenName');
+        else
+            name = 'Guest';
+        sendMsg.screen_name = name;
+        sendMsg.check = 0;
+        return sendMsg;
+      }
+
+      function _refresh(){
+       $.ajax({
+           type:'POST',
+           data:{check: 1},
+           url: '/updateMsg', 
+           dataType: 'json',
+           complete: function(refresh){
+             var session = refresh.responseText;
+             $("#_msgAreaText").val(session);
+             $("#_msgAreaText").scrollTop( $("#_msgAreaText")[0].scrollHeight - $("#_msgAreaText").height() );
+           }
+       });
+     
+       $.ajax({
+           type:'POST',
+           data:{check: 1},
+           url: '/storeFile', 
+           dataType: 'json',
+           complete: function(refresh){
+             var session = refresh.responseText;
+             if( session !== 'undefined' )
+                 $("#_fileListList").val(session);
+           }
+       });
+
+       setTimeout('_refresh()', 1000);
+      }
+
+      $(document).ready(function(){
+        $("#_uploadButton").click(function(){
+         //var reader = new FileReader();
+         var file = $("#_uploadFile").get(0).files[0];
+         if( fileList === "" && (file !== undefined) )
+             fileList = file.name;
+         else if( file !== undefined )
+             fileList = fileList + '\n' + file.name;
+         else
+             $("#_noUploadFile").dialog('open');
+         $("#_fileListList").val(fileList);
+         $.ajax({type: 'POST',
+                 data: { fileName: file.name, url: window.URL.createObjectURL(file)},
+                 url: '/storeFile',
+                 dataType: 'json',
+                 complete: function(response){
+                  var session = response.responseText;
+                  $("#_fileListList").val(session);                 
+                }
+               });
+         $("#_uploadFile").val("");
+        });
+      });
+
+      $(document).ready(function(){
+        $("#_downloadButton").click(function(){
+          var file = $("#_downloadFile").val();
+
+          if( file === "" || file === null ) { $("#_noFile").dialog('open'); }
+
+          $.ajax({type: 'POST', 
+                  data: { fileName: file },
+                  url: '/getFile',
+                  dataType: 'json',
+                  complete: function(response){ 
+                    if( response.responseText !== 'undefined' )
+                    {
+                      window.location.href = response.responseText;
+                      $("#_downloadFile").val("");
+                    }
+                    else
+                      $("#_noFile").dialog('open');                   
+                    }
+                  }); 
+          return;
+        });
+      });
+  body 
+   div#_noFile( style='display : none', class='ui-state-active' )
+    p Please Enter a File from the List.
+   div#_noUploadFile( style='display : none', class='ui-state-active' )
+    p Cannot upload given file.
+   div#_topBar
+    h4( class='ui-widget-content') OUTSTANDING FROZEN FISH
+   script
+    $(window).onload = _refresh();
+   div#_collection
+    div#_fileIO
+      h#_uploadTitle Upload A File
+      br
+      input#_uploadFile( type='file', class='ui-state-active' )
+      div#_fileList
+       textarea#_fileListList(class='ui-state-active', readonly='readonly' )
+      input#_uploadButton( type='button', class='ui-state-default', value='Upload Chosen File' )
+      div#_download
+       input#_downloadButton( type='button', class='ui-state-default', value='View File' )
+       input#_downloadFile( type='text', class='ui-state-active' )
+    div#_messageBody
+     h#_chatC CHAT
+     h#_chatExp !
+     div#_box( style='display : block' )
+     form#_msgArea(method='post')
+      div#_messageDisplay
+       textarea#_msgAreaText(readonly='readonly', form='#_msgArea', class='ui-state-active')
+       br
+      div#_sendDisplay
+       input#_msgSubmit(type='text', form='#_msgArea', class='ui-state-active')
+       button#_msgSubmitButton(type='submit', form='#_msgArea', class='ui-state-default') Send
+   div#_whiteBoardBody
+    iframe#_whiteBoard(src='http://awwapp.com/draw.html', class='ui-state-default' )
